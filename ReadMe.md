@@ -2,14 +2,14 @@
 
 ![Example Picture](./ScreenShot.png)
 
-* Monitors entire CPU load and displays the results in a graph using `Microcharts`. 
+* Monitors entire CPU load (among other categories) and displays the results in a graph using `Microcharts`. 
 * This project contains a good collection of native Win32 API calls as well as extension methods, but only a select few are used.
 * Other Nuget packages include: `Microcharts`, `SkiaSharp.Views.WinUI`, `System.Diagnostics.PerformanceCounter` and `System.Drawing.Common`. 
 * I have added calls to update the taskbar application icon in real-time and demonstrate two ways to do this.
   One technique uses the `Microsoft.UI.Windowing.AppWindow.SetIcon` and the other uses the Win32 API **SendMessage** call by passing the icon handle (*requires System.Drawing.Common*).
 * I recommend keeping this project in an **Unpackaged** format, as it was meant to be a portable utility.
-* About the `PerformanceCounters`, there are approximately 2 giga-zillion categories and sub-categories, I am only showing two 
-  extremly common counters in this utility. One could go mad investigating them all. e.g. there is a multi-instance
+* About the `PerformanceCounters`, there are approximately 2 giga-zillion categories and sub-categories, I am only showing four 
+  extremely common counters in this utility. One could go mad investigating them all. e.g. there is a multi-instance
   "SystemRestore" category which contains another instance category named "ServiceModelService" which exposes 35 sub-categories.
   Your categories may differ from the example due to the version of OS and what features you have enabled/disabled.
 
