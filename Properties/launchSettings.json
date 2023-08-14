@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "Monitor (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Monitor (Unpackaged)": {
+      "commandName": "Project",
+      "commandLineArgs": "disk 2 -7 354 1934 350 1.2"
+    }
+  }
+}
