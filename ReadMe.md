@@ -18,6 +18,8 @@
     - ```C:\>monitor disk 2 -4 695 1925 350 2.5```
         - would mean to start a disk usage graph on monitor #2 starting at screen coord -4,695
           and a window having a width of 1925 and a height of 350 and an update frequency of 2.5 seconds.
+    - ```C:\>monitor cpu```
+        - would mean to start a CPU usage graph using the settings found in `Setting.xml`.
     - A shortcut could be made in `shell:startup` with these parameters.
     - All settings are stored in the running folder location under the name `Settings.xml`
 
