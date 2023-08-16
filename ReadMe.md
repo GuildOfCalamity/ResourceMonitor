@@ -14,7 +14,7 @@
   Your categories may differ from the example due to the version of OS and what features you have enabled/disabled.
 
 ## Usage
-* You can run this as a normal desktop app, or by launching the executable or from the command line:
+* You can run this as a normal desktop app, or by launching the executable from the command line:
     - ```C:\>monitor disk 2 -4 695 1925 350 2.5```
         - would mean to start a disk usage graph on monitor #2 starting at screen coord -4,695
           and a window having a width of 1925 and a height of 350 and an update frequency of 2.5 seconds.
