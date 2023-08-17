@@ -7,6 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:Monitor"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    x:Name="_this"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     mc:Ignorable="d">
 
@@ -39,6 +40,68 @@
             Margin="-6,14,-6,-40"
             Chart="{x:Bind DiskChart}"
             Opacity="0" />
+
+        <ctrl:ChartCanvas
+            x:Name="microChartFileSys"
+            Margin="-6,14,-6,-40"
+            Chart="{x:Bind FileSysChart}"
+            Opacity="0" />
+
+        <ctrl:ChartCanvas
+            x:Name="microChartSystem"
+            Margin="-6,14,-6,-40"
+            Chart="{x:Bind SystemChart}"
+            Opacity="0" />
+
+        <!--  Popup Dialog  -->
+        <Popup
+            x:Name="popup"
+            Margin="50"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top">
+            <Popup.ChildTransitions>
+                <TransitionCollection>
+                    <PopupThemeTransition />
+                </TransitionCollection>
+            </Popup.ChildTransitions>
+            <Grid>
+                <!--  Outer Border  -->
+                <Rectangle
+                    Width="460"
+                    Height="110"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Fill="#303030"
+                    RadiusX="8"
+                    RadiusY="8"
+                    Stroke="#9F9F9F"
+                    StrokeThickness="2" />
+                <!--  Inner Border  -->
+                <Rectangle
+                    Width="458"
+                    Height="108"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Fill="Transparent"
+                    RadiusX="8"
+                    RadiusY="8"
+                    Stroke="#717171"
+                    StrokeThickness="2" />
+                <StackPanel
+                    Width="450"
+                    Margin="10"
+                    VerticalAlignment="Center">
+                    <TextBlock
+                        Margin="10"
+                        HorizontalAlignment="Center"
+                        FontFamily="{StaticResource ScanLineFont}"
+                        FontSize="{StaticResource FontSizeOne}"
+                        Text="Initializing counters..."
+                        TextAlignment="Center"
+                        TextWrapping="WrapWholeWords" />
+                </StackPanel>
+            </Grid>
+        </Popup>
 
     </Grid>
 </Page>

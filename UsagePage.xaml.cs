@@ -21,7 +21,7 @@ using SkiaSharp;
 
 using Monitor.Helpers;
 using System.Drawing.Printing;
-
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Monitor;
 
@@ -47,9 +47,17 @@ public sealed partial class UsagePage : Page
     // Only possible due to our System.Diagnostics.PerformanceCounter NuGet, sadly dotNET Core does not offer the PerformanceCounter (due to x-plat).
     System.Diagnostics.PerformanceCounter? perfCPU = null;
     System.Diagnostics.PerformanceCounter? perfMemory = null;
-    System.Diagnostics.PerformanceCounter? perfDisk = null;
+    System.Diagnostics.PerformanceCounter? perfLogicalDisk = null;
     System.Diagnostics.PerformanceCounter? perfDiskRead = null;
     System.Diagnostics.PerformanceCounter? perfDiskWrite = null;
+    System.Diagnostics.PerformanceCounter? perfFileSysRead = null;
+    System.Diagnostics.PerformanceCounter? perfFileSysWrite = null;
+    System.Diagnostics.PerformanceCounter? perfTCPv4Read = null;
+    System.Diagnostics.PerformanceCounter? perfTCPv4Write = null;
+    System.Diagnostics.PerformanceCounter? perfIPv4Read = null;
+    System.Diagnostics.PerformanceCounter? perfIPv4Write = null;
+    System.Diagnostics.PerformanceCounter? perfEvents = null;
+    System.Diagnostics.PerformanceCounter? perfSystem = null;
 
     // This is simpler than trying to determine the NIC name/instance via perf counter.
     ConnectionProfile? netProfile = null;
@@ -93,7 +101,7 @@ public sealed partial class UsagePage : Page
                 Entries = _entriesCPU,
                 LabelOrientation = Microcharts.Orientation.Horizontal,
                 ValueLabelOrientation = Microcharts.Orientation.Horizontal,
-                LabelTextSize = 11,  
+                LabelTextSize = 10,  
                 EnableYFadeOutGradient = true, 
                 Typeface = SKTypeface.FromFile(System.IO.Path.Combine(Environment.CurrentDirectory, "Assets\\Fonts\\DashDigital7.ttf")),
                 IsAnimated = false,
@@ -139,6 +147,54 @@ public sealed partial class UsagePage : Page
             var chart = new LineChart
             {
                 Entries = _entriesDisk,
+                LabelOrientation = Microcharts.Orientation.Horizontal,
+                ValueLabelOrientation = Microcharts.Orientation.Horizontal,
+                LabelTextSize = 9,
+                EnableYFadeOutGradient = true,
+                Typeface = SKTypeface.FromFile(System.IO.Path.Combine(Environment.CurrentDirectory, "Assets\\Fonts\\DashDigital7.ttf")),
+                IsAnimated = false,
+                //Margin = -10,
+                //AnimationDuration = TimeSpan.FromMilliseconds(250)
+            };
+
+            return chart;
+        }
+    }
+
+    Thickness marginFS = new(-6, 14, -6, -40);
+    ConcurrentQueue<float> usageQueueFS = new ConcurrentQueue<float>();
+    public List<ChartEntry> _entriesFS = new();
+    public Chart FileSysChart
+    {
+        get
+        {
+            var chart = new LineChart
+            {
+                Entries = _entriesFS,
+                LabelOrientation = Microcharts.Orientation.Horizontal,
+                ValueLabelOrientation = Microcharts.Orientation.Horizontal,
+                LabelTextSize = 9,
+                EnableYFadeOutGradient = true,
+                Typeface = SKTypeface.FromFile(System.IO.Path.Combine(Environment.CurrentDirectory, "Assets\\Fonts\\DashDigital7.ttf")),
+                IsAnimated = false,
+                //Margin = -10,
+                //AnimationDuration = TimeSpan.FromMilliseconds(250)
+            };
+
+            return chart;
+        }
+    }
+
+    Thickness marginSys = new(-6, 14, -6, -40);
+    ConcurrentQueue<float> usageQueueSys = new ConcurrentQueue<float>();
+    public List<ChartEntry> _entriesSys = new();
+    public Chart SystemChart
+    {
+        get
+        {
+            var chart = new LineChart
+            {
+                Entries = _entriesSys,
                 LabelOrientation = Microcharts.Orientation.Horizontal,
                 ValueLabelOrientation = Microcharts.Orientation.Horizontal,
                 LabelTextSize = 9,
@@ -287,39 +343,84 @@ public sealed partial class UsagePage : Page
         //var entrails = Extensions.ReflectFieldInfo(typeof(Microcharts.Chart));
 
         #region [Init Counters]
-        // These can a little over a second to initialize as the system allocates the diagnostics controller resources.
-        perfCPU = new System.Diagnostics.PerformanceCounter("Processor Information", "% Processor Time", "_Total", true);
-		perfMemory = new System.Diagnostics.PerformanceCounter("Memory", "Available MBytes", true);
-		perfDisk = new System.Diagnostics.PerformanceCounter("PhysicalDisk", "% Disk Time", "_Total", true);
-		perfDiskRead = new System.Diagnostics.PerformanceCounter("PhysicalDisk", "Disk Reads/sec", "_Total", true);
-		perfDiskWrite = new System.Diagnostics.PerformanceCounter("PhysicalDisk", "Disk Writes/sec", "_Total", true);
-		#endregion
+        popup.IsOpen = true;
+        // These can take seconds to initialize as the system allocates the
+        // diagnostics controller resources, depending on quantity of counters.
+        Task.Run(() =>
+        {
+            switch (App.GraphType)
+            {
+                case eGraphType.CPU:
+                    perfCPU = new System.Diagnostics.PerformanceCounter("Processor Information", "% Processor Time", "_Total", true);
+                    break;
+                case eGraphType.DISK:
+		            perfDiskRead = new System.Diagnostics.PerformanceCounter("PhysicalDisk", "Disk Reads/sec", "_Total", true);
+                    perfDiskWrite = new System.Diagnostics.PerformanceCounter("PhysicalDisk", "Disk Writes/sec", "_Total", true);
+		            //perfLogicalDisk = new System.Diagnostics.PerformanceCounter("LogicalDisk", "% Disk Time", "_Total", true);
+                    break;
+                case eGraphType.RAM:
+                    perfMemory = new System.Diagnostics.PerformanceCounter("Memory", "Available MBytes", true);
+                    break;
+                case eGraphType.LAN:
+                    // We're now using the native Windows.Networking.Connectivity.ConnectionProfile, but if you want pure perfcntr action then these will also work...
+                    //perfTCPv4Read = new System.Diagnostics.PerformanceCounter("TCPv4", "Segments Received/sec", true);
+                    //perfTCPv4Write = new System.Diagnostics.PerformanceCounter("TCPv4", "Segments Sent/sec", true);
+                    //perfIPv4Read = new System.Diagnostics.PerformanceCounter("TCPv4", "Datagrams Received/sec", true);
+                    //perfIPv4Write = new System.Diagnostics.PerformanceCounter("TCPv4", "Datagrams Sent/sec", true);
+                    break;
+                case eGraphType.FS:
+                    perfFileSysWrite = new System.Diagnostics.PerformanceCounter("FileSystem Disk Activity", "FileSystem Bytes Written", "_Total", true);
+                    perfFileSysRead = new System.Diagnostics.PerformanceCounter("FileSystem Disk Activity", "FileSystem Bytes Read", "_Total", true);
+                    break;
+                case eGraphType.SYS: 
+                    // A good indicator for how busy a system is overall.
+                    perfSystem = new System.Diagnostics.PerformanceCounter("System", "System Calls/sec", true);
+                    //perfEvents = new System.Diagnostics.PerformanceCounter("Event Log", "Events/sec", true);
+                    break;
+                default:
+                    break;
+            }
+        }).ContinueWith(async t =>
+        {
+            await Task.Delay(1000);
+            popup.DispatcherQueue.TryEnqueue(() => { popup.IsOpen = false; });
+        });
+        #endregion
 
-		#region [Init Graph Controls]
-		if (App.GraphType == eGraphType.LAN) // Network
+        #region [Show or Hide Graph Controls]
+        if (App.GraphType == eGraphType.LAN) // Network
         {
             microChartNet.Opacity = 1;
-            microChartDisk.Opacity = microChartCPU.Opacity = microChartMem.Opacity = 0;
+            microChartDisk.Opacity = microChartSystem.Opacity = microChartFileSys.Opacity = microChartCPU.Opacity = microChartMem.Opacity = 0;
         }
         else if (App.GraphType == eGraphType.RAM) // Memory
         {
             microChartMem.Opacity = 1;
-            microChartDisk.Opacity = microChartCPU.Opacity = microChartNet.Opacity = 0;
+            microChartDisk.Opacity = microChartSystem.Opacity = microChartFileSys.Opacity = microChartCPU.Opacity = microChartNet.Opacity = 0;
         }
         else if (App.GraphType == eGraphType.CPU) // CPU
         {
             microChartCPU.Opacity = 1;
-            microChartDisk.Opacity = microChartMem.Opacity = microChartNet.Opacity = 0;
+            microChartDisk.Opacity = microChartSystem.Opacity = microChartFileSys.Opacity = microChartMem.Opacity = microChartNet.Opacity = 0;
         }
         else if (App.GraphType == eGraphType.DISK) // Disk
         {
             microChartDisk.Opacity = 1;
-            microChartMem.Opacity = microChartCPU.Opacity = microChartNet.Opacity = 0;
+            microChartMem.Opacity = microChartSystem.Opacity = microChartFileSys.Opacity = microChartCPU.Opacity = microChartNet.Opacity = 0;
         }
-        else // default CPU
+        else if (App.GraphType == eGraphType.FS) // File System
         {
-            microChartCPU.Opacity = 1;
-            microChartDisk.Opacity = microChartMem.Opacity = microChartNet.Opacity = 0;
+            microChartFileSys.Opacity = 1;
+            microChartMem.Opacity = microChartSystem.Opacity = microChartDisk.Opacity = microChartCPU.Opacity = microChartNet.Opacity = 0;
+        }
+        else if (App.GraphType == eGraphType.FS) // Calls per second
+        {
+            microChartSystem.Opacity = 1;
+            microChartMem.Opacity = microChartFileSys.Opacity = microChartDisk.Opacity = microChartCPU.Opacity = microChartNet.Opacity = 0;
+        }
+        else // debug
+        {
+            microChartDisk.Opacity = microChartSystem.Opacity = microChartFileSys.Opacity = microChartMem.Opacity = microChartNet.Opacity = microChartCPU.Opacity = 1;
         }
         #endregion
 
@@ -339,14 +440,18 @@ public sealed partial class UsagePage : Page
                     // timer window, so stop the timer just to be safe.
                     _timer.Stop();
 
-                    if (App.GraphType == eGraphType.LAN)
+                    if (App.GraphType == eGraphType.LAN && netProfile != null)
                         usageQueueNet.Enqueue(GetNetwork());
-                    else if (App.GraphType == eGraphType.RAM)
+                    else if (App.GraphType == eGraphType.RAM && perfMemory != null)
                         usageQueueMem.Enqueue(GetMemory());
-                    else if (App.GraphType == eGraphType.CPU)
+                    else if (App.GraphType == eGraphType.CPU && perfCPU != null)
                         usageQueueCPU.Enqueue(GetCPU());
-                    else if (App.GraphType == eGraphType.DISK)
+                    else if (App.GraphType == eGraphType.DISK && perfDiskRead != null && perfDiskWrite != null)
                         usageQueueDisk.Enqueue(GetDisk());
+                    else if (App.GraphType == eGraphType.FS && perfFileSysRead != null && perfFileSysWrite != null)
+                        usageQueueFS.Enqueue(GetFileSystem());
+                    else if (App.GraphType == eGraphType.SYS && perfSystem != null)
+                        usageQueueSys.Enqueue(GetSystem());
 
                     rootGrid.DispatcherQueue.TryEnqueue(() => { UpdateGraphSeries(); });
 
@@ -418,20 +523,24 @@ public sealed partial class UsagePage : Page
                 return;
             else if (App.GraphType == eGraphType.DISK && usageQueueDisk.Count == 0)
                 return;
+            else if (App.GraphType == eGraphType.FS && usageQueueFS.Count == 0)
+                return;
+            else if (App.GraphType == eGraphType.SYS && usageQueueSys.Count == 0)
+                return;
 
             // Maximize graph space if user has made a tiny window.
             if (MainWindow.newHeight > 0 && MainWindow.newHeight < 301) { noText = true; }
             // Some rudimentary scaling. TODO: Re-adjust graph margins?
-            if (MainWindow.newWidth > 0 && MainWindow.newWidth > 2500) { _maxPoints = (noText) ? 40 : 45; }
-            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 2200) { _maxPoints = (noText) ? 35 : 40; }
-            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 1900) { _maxPoints = (noText) ? 32 : 37; }
-            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 1500) { _maxPoints = (noText) ? 29 : 34; }
-            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 1200) { _maxPoints = (noText) ? 26 : 31; }
-            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 1000) { _maxPoints = (noText) ? 23 : 28; }
-            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 800) { _maxPoints =  (noText) ? 19 : 24; }
-            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 600) { _maxPoints =  (noText) ? 14 : 19; }
-            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 400) { _maxPoints =  (noText) ? 8 : 13; }
-            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 200) { _maxPoints =  (noText) ? 4 : 8; }
+            if (MainWindow.newWidth > 0 && MainWindow.newWidth > 2500) { _maxPoints      = (noText) ? 45 : 40; }
+            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 2200) { _maxPoints = (noText) ? 40 : 35; }
+            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 1900) { _maxPoints = (noText) ? 37 : 32; }
+            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 1500) { _maxPoints = (noText) ? 34 : 29; }
+            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 1200) { _maxPoints = (noText) ? 31 : 26; }
+            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 1000) { _maxPoints = (noText) ? 28 : 23; }
+            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 800) { _maxPoints =  (noText) ? 24 : 19; }
+            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 600) { _maxPoints =  (noText) ? 19 : 14; }
+            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 400) { _maxPoints =  (noText) ? 13 : 8; }
+            else if (MainWindow.newWidth > 0 && MainWindow.newWidth > 200) { _maxPoints =  (noText) ? 8 :  4; }
 
             // Adjust graph margin if tiny window detected.
             if (noText)
@@ -445,6 +554,10 @@ public sealed partial class UsagePage : Page
                     microChartMem.Margin = new Thickness(-2, 14, -2, -10);
                 else if (App.GraphType == eGraphType.LAN && microChartNet.Margin == marginNet)
                     microChartNet.Margin = new Thickness(-2, 14, -2, -10);
+                else if (App.GraphType == eGraphType.FS && microChartFileSys.Margin == marginFS)
+                    microChartFileSys.Margin = new Thickness(-2, 14, -2, -10);
+                else if (App.GraphType == eGraphType.SYS && microChartSystem.Margin == marginSys)
+                    microChartSystem.Margin = new Thickness(-2, 14, -2, -10);
             }
             else
             {
@@ -456,6 +569,10 @@ public sealed partial class UsagePage : Page
                     microChartMem.Margin = marginMem;
                 else if (App.GraphType == eGraphType.LAN && microChartNet.Margin != marginNet)
                     microChartNet.Margin = marginNet;
+                else if (App.GraphType == eGraphType.FS && microChartFileSys.Margin != marginFS)
+                    microChartFileSys.Margin = marginFS;
+                else if (App.GraphType == eGraphType.SYS && microChartSystem.Margin != marginSys)
+                    microChartSystem.Margin = marginSys;
             }
 
             // var clr = GetRandomSKColor();
@@ -573,6 +690,60 @@ public sealed partial class UsagePage : Page
                     TitleUpdateEvent?.Invoke(this, cpu);
                 }
             }
+            else if (App.GraphType == eGraphType.FS)
+            {
+                if (usageQueueFS.TryDequeue(out float fs))
+                {
+
+                    _entriesFS.Add(
+                    new ChartEntry(fs)
+                    {
+                        Label = noText ? "" : ".",
+                        TextColor = SKColor.Parse(clr),
+                        ValueLabel = noText ? "" : $"{fs.ToFileSize()}",
+                        ValueLabelColor = SKColor.Parse(clr),
+                        Color = SKColor.Parse(clr)
+                    });
+
+                    while (_entriesFS.Count > _maxPoints)
+                    {   // Rolling style
+                        _entriesFS.RemoveAt(0);
+                    }
+
+                    // Re-paint
+                    microChartFileSys.Invalidate();
+
+                    // Signal the main window for title update.
+                    TitleUpdateEvent?.Invoke(this, fs);
+                }
+            }
+            else if (App.GraphType == eGraphType.SYS)
+            {
+                if (usageQueueSys.TryDequeue(out float sys))
+                {
+
+                    _entriesSys.Add(
+                    new ChartEntry(sys)
+                    {
+                        Label = noText ? "" : ".",
+                        TextColor = SKColor.Parse(clr),
+                        ValueLabel = noText ? "" : $"{sys.ToAbbreviatedSize()}",
+                        ValueLabelColor = SKColor.Parse(clr),
+                        Color = SKColor.Parse(clr)
+                    });
+
+                    while (_entriesSys.Count > _maxPoints)
+                    {   // Rolling style
+                        _entriesSys.RemoveAt(0);
+                    }
+
+                    // Re-paint
+                    microChartSystem.Invalidate();
+
+                    // Signal the main window for title update.
+                    TitleUpdateEvent?.Invoke(this, sys);
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -661,9 +832,6 @@ public sealed partial class UsagePage : Page
         if (perfMemory == null)
             return 0;
 
-        if (!_initialized)
-            _ = perfMemory.NextValue(); // Some counters must be primed before the value is accurate.
-
         return perfMemory.NextValue();
     }
 
@@ -672,8 +840,6 @@ public sealed partial class UsagePage : Page
     /// </summary>
     float GetDisk()
     {
-        //if (perfDisk == null) return 0;
-        //float newValue = perfDisk.NextValue();
         return GetDiskRead() + GetDiskWrite();
     }
 
@@ -682,23 +848,62 @@ public sealed partial class UsagePage : Page
     /// </summary>
     float GetDiskRead()
     {
-        if (perfDiskRead == null) return 0;
-        float newValue = perfDiskRead.NextValue();
-        return newValue;
+        if (perfDiskRead == null) 
+            return 0;
+
+        return perfDiskRead.NextValue();
     }
 
     /// <summary>
-    /// Disk Read Performance
+    /// Disk Write Performance
     /// </summary>
     float GetDiskWrite()
     {
-        if (perfDiskWrite == null) return 0;
-        float newValue = perfDiskWrite.NextValue();
-        return newValue;
+        if (perfDiskWrite == null)
+            return 0;
+        
+        return perfDiskWrite.NextValue();
     }
 
     /// <summary>
-    /// LAN Performance
+    /// File System Performance
+    /// </summary>
+    float GetFileSystem()
+    {
+        return GetFileSysRead() + GetFileSysWrite();
+    }
+
+    /// <summary>
+    /// File system bytes read
+    /// </summary>
+    float GetFileSysRead()
+    {
+        if (perfFileSysRead == null) return 0;
+        return perfFileSysRead.NextValue();
+    }
+
+    /// <summary>
+    /// File system bytes written
+    /// </summary>
+    float GetFileSysWrite()
+    {
+        if (perfFileSysWrite == null) return 0;
+        return perfFileSysWrite.NextValue();
+    }
+
+    /// <summary>
+    /// System calls per second
+    /// </summary>
+    float GetSystem()
+    {
+        if (perfSystem == null)
+            return 0;
+
+        return perfSystem.NextValue();
+    }
+
+    /// <summary>
+    /// LAN Performance using <see cref="ConnectionProfile"/>
     /// </summary>
 	float GetNetwork()
 	{
@@ -737,6 +942,16 @@ public sealed partial class UsagePage : Page
 			Debug.WriteLine($"GetNetworkUsage: {ex.Message}");
 			return 0f;
 		}
+	}
+
+    /// <summary>
+    /// LAN Performance using <see cref="PerformanceCounter"/>
+    /// </summary>
+    float GetTCPv4()
+    {
+		if (perfTCPv4Read == null) return 0;
+		if (perfTCPv4Write == null) return 0;
+        return perfTCPv4Read.NextValue() + perfTCPv4Write.NextValue();
 	}
 
 	/// <summary>
@@ -1044,4 +1259,5 @@ public sealed partial class UsagePage : Page
          */
     }
     #endregion
+
 }

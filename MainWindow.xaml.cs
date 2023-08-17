@@ -67,6 +67,8 @@ public sealed partial class MainWindow : Window
             ico4 = new System.Drawing.Icon(System.IO.Path.Combine(Environment.CurrentDirectory, "Assets\\Scale4.ico"));
             ico5 = new System.Drawing.Icon(System.IO.Path.Combine(Environment.CurrentDirectory, "Assets\\Scale5.ico"));
         }
+
+        Debug.WriteLine(RunTest("Assemblies"));
     }
 
     /// <summary>
@@ -103,6 +105,10 @@ public sealed partial class MainWindow : Window
             this.Title = tbTitle.Text = $"RAM {amount.ToFileSize()}";
         else if (App.GraphType == eGraphType.DISK)
             this.Title = tbTitle.Text = $"DISK {amount:N0}/sec";
+        else if (App.GraphType == eGraphType.FS)
+            this.Title = tbTitle.Text = $"FS {amount.ToFileSize()}";
+        else if (App.GraphType == eGraphType.SYS)
+            this.Title = tbTitle.Text = $"SYS {amount.ToAbbreviatedSize()}";
         else if (App.GraphType == eGraphType.CPU)
         {
             this.Title = tbTitle.Text = $"CPU {amount:N0}%";
@@ -218,4 +224,27 @@ public sealed partial class MainWindow : Window
     }
     // Bitmap holder of currently loaded image.
     private SoftwareBitmap? bitmap;
+
+
+    /// <summary>
+    /// Testing method examples.
+    /// </summary>
+    /// <param name="region">test type</param>
+    /// <returns>test result</returns>
+    string RunTest(string? region)
+    {
+        return region switch
+        {
+            "GraphTest" => GraphTest(),
+            "SpeedTest" => SpeedTest(),
+            "CultureTest" => CultureTest(),
+            "Assemblies" => Extensions.GatherLoadedModules(true),
+            null => throw new ArgumentNullException(nameof(region)),
+            _ => throw new ArgumentException("A test argument must be passed", nameof(region)),
+
+        };
+    }
+    string GraphTest() => "done";
+    string SpeedTest() => "done";
+    string CultureTest() => "not done";
 }

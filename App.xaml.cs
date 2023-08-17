@@ -83,6 +83,8 @@ public partial class App : Application
         unsubscribeList.Add(() => { AppDomain.CurrentDomain.ProcessExit -= CurrentDomainOnProcessExit; });
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
         unsubscribeList.Add(() => { TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException; });
+        // We'll exclude this from the unsub list in the event that an error occurs during final exit.
+        this.UnhandledException += ApplicationUnhandledException;
         #endregion
 
         this.InitializeComponent();
@@ -172,6 +174,10 @@ public partial class App : Application
                 GraphType = eGraphType.LAN;
             else if (!string.IsNullOrEmpty(cmdArgs[1]) && (cmdArgs[1].Contains("disk", StringComparison.OrdinalIgnoreCase) || cmdArgs[1].Contains("ssd", StringComparison.OrdinalIgnoreCase)))
                 GraphType = eGraphType.DISK;
+            else if (!string.IsNullOrEmpty(cmdArgs[1]) && (cmdArgs[1].Contains("file", StringComparison.OrdinalIgnoreCase) || cmdArgs[1].Contains("fs", StringComparison.OrdinalIgnoreCase)))
+                GraphType = eGraphType.FS;
+            else if (!string.IsNullOrEmpty(cmdArgs[1]) && (cmdArgs[1].Contains("sys", StringComparison.OrdinalIgnoreCase) || cmdArgs[1].Contains("calls", StringComparison.OrdinalIgnoreCase)))
+                GraphType = eGraphType.SYS;
             else if (!string.IsNullOrEmpty(cmdArgs[1]) && (cmdArgs[1].Contains("screen", StringComparison.OrdinalIgnoreCase) || cmdArgs[1].Contains("capture", StringComparison.OrdinalIgnoreCase)))
                 CaptureScreen();
 
@@ -305,6 +311,16 @@ public partial class App : Application
     }
 
     #region [Domain Events]
+    /// <summary>
+    /// https://docs.microsoft.com/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.application.unhandledexception
+    /// </summary>
+    void ApplicationUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+    {
+        Exception? ex = e.Exception;
+        Debug.WriteLine($"Unhandled exception of type {ex?.GetType()}: {ex}", $"{nameof(App)}");
+        e.Handled = true;
+    }
+
     void CurrentDomainOnProcessExit(object? sender, EventArgs e)
     {
         IsClosing = true;
