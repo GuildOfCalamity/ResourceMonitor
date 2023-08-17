@@ -1243,7 +1243,7 @@ public static class Extensions
 	}
 
 	/// <summary>
-	/// Converts long file size into typical browser file size.
+	/// Converts float file size into typical browser file size.
 	/// </summary>
 	public static string ToFileSize(this float size)
 	{
@@ -1255,10 +1255,25 @@ public static class Extensions
 		if (size < Math.Pow(1024, 6)) { return (size / Math.Pow(1024, 5)).ToString("F0") + "PB"; }
 		return (size / Math.Pow(1024, 6)).ToString("F0") + "EB";
 	}
-	#endregion
 
-	#region [IEnumerables]
-	public static IEnumerable<T> TakeLastFive<T>(this IEnumerable<T> source)
+    /// <summary>
+    /// Convert number into typical browser file size.
+    /// </summary>
+    public static string ToAbbreviatedSize(this float size)
+    {
+        if (size < 1024) { return (size).ToString("F0"); }
+        if (size < Math.Pow(1024, 2)) { return (size / 1024).ToString("F0") + "K"; }
+        if (size < Math.Pow(1024, 3)) { return (size / Math.Pow(1024, 2)).ToString("F0") + "M"; }
+        if (size < Math.Pow(1024, 4)) { return (size / Math.Pow(1024, 3)).ToString("F0") + "G"; }
+        if (size < Math.Pow(1024, 5)) { return (size / Math.Pow(1024, 4)).ToString("F0") + "T"; }
+        if (size < Math.Pow(1024, 6)) { return (size / Math.Pow(1024, 5)).ToString("F0") + "P"; }
+        return (size / Math.Pow(1024, 6)).ToString("F0") + "E";
+    }
+
+    #endregion
+
+    #region [IEnumerables]
+    public static IEnumerable<T> TakeLastFive<T>(this IEnumerable<T> source)
     {
         if (source.Count() < 5)
             return source;
@@ -1774,9 +1789,125 @@ public static class Extensions
 
         return index;
     }
+
+    /// <summary>
+    /// Outputs a list of items in the specified culture.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="items"></param>
+    public static void PrintItems<T>(this List<T> items, System.Globalization.CultureInfo culture) where T : IFormattable
+    {
+        foreach (T item in items)
+        {
+            Debug.WriteLine($"{item.ToString(null, culture)} ({item.GetType().Name})");
+        }
+    }
+
+    public static List<string> DelimitedItemsToList(this string items, string[] delimiters = null)
+    {
+        List<string> retVals = new List<string>();
+
+        if (delimiters == null)
+            delimiters = new string[] { ";", "," };
+
+        foreach (var item in items.Split(delimiters, StringSplitOptions.RemoveEmptyEntries))
+            retVals.Add(item);
+
+        return retVals;
+    }
+
+    public static string Base64Encode(this string plainText)
+    {
+        var plainTextBytes = Encoding.UTF8.GetBytes(plainText);
+        return System.Convert.ToBase64String(plainTextBytes);
+    }
     #endregion
 
     #region [Miscellaneous]
+    /// <summary>
+    /// Fetch all <see cref="ProcessModule"/>s in the current running process.
+    /// </summary>
+    /// <param name="excludeWinSys">if true any file path starting with %windir% will be excluded from the results</param>
+    public static string GatherLoadedModules(bool excludeWinSys)
+    {
+        var modules = new StringBuilder();
+        // Setup some common library paths if exclude option is desired.
+        var winSys = Environment.GetFolderPath(Environment.SpecialFolder.Windows) ?? "N/A";
+        var winProg = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles) ?? "N/A";
+        try
+        {
+            var process = Process.GetCurrentProcess();
+            foreach (ProcessModule module in process.Modules)
+            {
+                var fn = module.FileName ?? "Empty";
+                if (excludeWinSys && !fn.StartsWith(winSys, StringComparison.OrdinalIgnoreCase) && !fn.StartsWith(winProg, StringComparison.OrdinalIgnoreCase))
+                    modules.AppendLine($"{System.IO.Path.GetFileName(fn)} (v{GetFileVersion(fn)})");
+                else if (!excludeWinSys)
+                    modules.AppendLine($"{System.IO.Path.GetFileName(fn)} (v{GetFileVersion(fn)})");
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"GatherReferencedAssemblies: {ex.Message}", nameof(Extensions));
+        }
+        return modules.ToString();
+    }
+
+    /// <summary>
+    /// Fetch all referenced <see cref="System.Reflection.AssemblyName"/> used by the current process.
+    /// </summary>
+    /// <returns><see cref="List{T}"/></returns>
+    public static List<string> ListAllAssemblies()
+    {
+        List<string> results = new();
+        try
+        {
+            System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            System.Reflection.AssemblyName main = assembly.GetName();
+            results.Add($"Main Assembly: {main.Name}, Version: {main.Version}");
+            IOrderedEnumerable<System.Reflection.AssemblyName> names = assembly.GetReferencedAssemblies().OrderBy(o => o.Name);
+            foreach (var sas in names)
+                results.Add($"Sub Assembly: {sas.Name}, Version: {sas.Version}");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"ListAllAssemblies: {ex.Message}");
+        }
+        return results;
+    }
+
+    /// <summary>
+    /// Brute force alpha removal of <see cref="Version"/> text
+    /// is not always the best approach, e.g. the following:
+    /// "3.0.0-zmain.2211 (DCPP(199ff10ec000000)(cloudtest).160101.0800)"
+    /// ...converts to:
+    /// "3.0.0.221119910000000.160101.0800"
+    /// ...which is not accurate.
+    /// </summary>
+    /// <param name="fullPath">the entire path to the file</param>
+    /// <returns>sanitized <see cref="Version"/></returns>
+    public static Version GetFileVersion(string fullPath)
+    {
+        try
+        {
+            var ver = FileVersionInfo.GetVersionInfo(fullPath).FileVersion;
+            if (string.IsNullOrEmpty(ver)) { return new Version(); }
+            if (ver.HasSpace())
+            {   // Some assemblies contain versions such as "10.0.22622.1030 (WinBuild.160101.0800)"
+                // This will cause the Version constructor to throw an exception, so just take the first piece.
+                var chunk = ver.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var firstPiece = Regex.Replace(chunk[0].Replace(',','.'), "[^.0-9]", "");
+                return new Version(firstPiece);
+            }
+            string cleanVersion = Regex.Replace(ver, "[^.0-9]", "");
+            return new Version(cleanVersion);
+        }
+        catch (Exception)
+        {
+            return new Version(); // 0.0
+        }
+    }
+
     /// <summary>
     /// Formats the external caller into a usable name.
     /// Based on the project, the compiler could choose to inline this method with the caller, we do not want that behavior
