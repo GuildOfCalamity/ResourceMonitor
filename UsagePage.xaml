@@ -8,8 +8,11 @@
     xmlns:local="using:Monitor"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     x:Name="_this"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     mc:Ignorable="d">
+    <!--
+        [Before AcrylicBackdrop was added]
+        <Page Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    -->
 
     <!--  Plot Graph  -->
     <Grid

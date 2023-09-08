@@ -68,6 +68,20 @@ public sealed partial class MainWindow : Window
             ico5 = new System.Drawing.Icon(System.IO.Path.Combine(Environment.CurrentDirectory, "Assets\\Scale5.ico"));
         }
 
+        #region [SystemBackdrop was added starting with WinAppSDK 1.3.230502+]
+        if (App.UseAcrylic)
+        {
+            if (Extensions.IsWindows11OrGreater())
+                SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop();
+            else
+                SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
+        }
+        else
+        {
+            Root.Background = (SolidColorBrush)App.Current.Resources["ApplicationPageBackgroundThemeBrush"];
+        }
+        #endregion
+
         Debug.WriteLine(RunTest("Assemblies"));
     }
 

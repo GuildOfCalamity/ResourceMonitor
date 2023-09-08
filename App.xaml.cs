@@ -41,6 +41,7 @@ public partial class App : Application
     static DisplayArea? Desktop { get; set; }
     static ValueStopwatch stopWatch { get; set; } = ValueStopwatch.StartNew();
     public static bool IsClosing { get; private set; }
+    public static bool UseAcrylic { get; private set; } = false;
     public static IntPtr WindowHandle { get; private set; }
     public static AppWindow? AppWin { get; private set; }
     public static Window? MainWin { get; private set; }
@@ -101,6 +102,10 @@ public partial class App : Application
 
         // Load our config file.
         AppSettings = new SettingsManager();
+
+        // Check for SystemBackdrop
+        if (cmdArgs?.Length > 8 && !string.IsNullOrEmpty(cmdArgs[8]))
+            UseAcrylic = true;
 
         m_window = new MainWindow();
         MainRoot = m_window.Content as FrameworkElement; // for content dialogs
@@ -212,13 +217,13 @@ public partial class App : Application
 			if (AppSettings != null && cmdArgs?.Length > 7 && !string.IsNullOrEmpty(cmdArgs[7]))
 				if (double.TryParse(cmdArgs[7], out double arg7)) { AppSettings.Config.Frequency = arg7; }
 
-			#region [Extras if launched from CLI]
-				//if (ConsoleManager.Attach(default))
-				//    Console.WriteLine($" Starting '{GraphType}' monitor... ");
-				//else
-				//    Debug.WriteLine($"> No console to attach.");
-				#endregion
-		}
+            #region [Extras if launched from CLI]
+            //if (ConsoleManager.Attach(default))
+            //    Console.WriteLine($" Starting '{GraphType}' monitor... ");
+            //else
+            //    Debug.WriteLine($"> No console to attach.");
+            #endregion
+        }
 		#endregion
 
 		#region [Changing the process priority]

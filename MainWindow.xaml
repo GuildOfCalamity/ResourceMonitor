@@ -6,13 +6,18 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:Monitor"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    x:Name="ThisPage"
     mc:Ignorable="d">
+
+    <!--
+        [Before AcrylicBackdrop was added]
+        <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    -->
 
     <Grid
         x:Name="Root"
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
-        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
         RowDefinitions="Auto,*">
         <!--  Custom TitleBar  -->
         <Grid

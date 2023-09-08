@@ -32,6 +32,27 @@ namespace Monitor;
 public static class Extensions
 {
 	#region [WinUI]
+   public static async Task LocateAndLaunchUrlFromString(string text)
+   {
+       List<string> urls = ExtractUrls(text);
+       if (urls.Count > 0)
+       {
+           Uri uriResult = new Uri(urls[0]);
+           await Windows.System.Launcher.LaunchUriAsync(uriResult);
+       }
+       else
+           await Task.CompletedTask;
+   }
+
+   public static List<string> ExtractUrls(string text)
+   {
+       List<string> urls = new List<string>();
+       Regex urlRx = new Regex(@"((https?|ftp|file)\://|www\.)[A-Za-z0-9\.\-]+(/[A-Za-z0-9\?\&\=;\+!'\\(\)\*\-\._~%]*)*", RegexOptions.IgnoreCase);
+       MatchCollection matches = urlRx.Matches(text);
+       foreach (Match match in matches) { urls.Add(match.Value); }
+       return urls;
+   }
+
 	/// <summary>
 	/// Converts a <see cref="System.Numerics.Vector2"/> structure (x,y) 
 	/// to <see cref="System.Numerics.Vector3"/> structure (x, y, 0).
@@ -2072,5 +2093,11 @@ public static class Extensions
         Type intType = Enum.GetUnderlyingType(anyEnum.GetType());
         return Convert.ChangeType(anyEnum, intType);
     }
-	#endregion
+
+    /// <summary>
+    /// Get OS version by way of <see cref="Environment.OSVersion"/>.
+    /// </summary>
+    /// <returns>true if Win11 or higher, false otherwise</returns>
+    public static bool IsWindows11OrGreater() => Environment.OSVersion.Version >= new Version(10, 0, 22000, 0);
+    #endregion
 }
